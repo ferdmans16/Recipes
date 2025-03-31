@@ -8,7 +8,7 @@
       font-family: sans-serif;
       background-color: #fffdf7;
       color: #333;
-      max-width: 600px;
+      max-width: 800px;
       margin: 2rem auto;
       padding: 1rem;
     }
@@ -16,12 +16,19 @@
       text-align: center;
       color: #914d1c;
     }
-    ul {
-      list-style: none;
-      padding: 0;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
     }
-    li {
-      margin: 0.5rem 0;
+    th, td {
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      cursor: pointer;
+      background-color: #f3e9da;
     }
     a {
       text-decoration: none;
@@ -34,10 +41,62 @@
 </head>
 <body>
   <h1>My Paprika Recipes</h1>
-  <ul>
-    <li><a href="Challah%20Bread.html">Challah Bread</a></li>
-    <!-- Add more recipes below like this -->
-    <!-- <li><a href="your-recipe-name.html">Recipe Title</a></li> -->
-  </ul>
+  <p>Click the column headers to sort:</p>
+  <table id="recipe-table">
+    <thead>
+      <tr>
+        <th onclick="sortTable(0)">Recipe Name 🔽</th>
+        <th onclick="sortTable(1)">Last Updated 🕒</th>
+      </tr>
+    </thead>
+    <tbody id="recipe-list">
+      <!-- Recipes will load here -->
+    </tbody>
+  </table>
+
+  <script>
+    const username = "ferdmans16";
+    const repo = "Recipes";
+
+    async function fetchRecipes() {
+      const res = await fetch(`https://api.github.com/repos/${username}/${repo}/contents/`);
+      const files = await res.json();
+
+      const htmlFiles = files.filter(file => file.name.endsWith(".html"));
+      const tbody = document.getElementById("recipe-list");
+
+      for (let file of htmlFiles) {
+        const commitRes = await fetch(`https://api.github.com/repos/${username}/${repo}/commits?path=${file.name}&per_page=1`);
+        const commitData = await commitRes.json();
+        const date = new Date(commitData[0]?.commit?.committer?.date || file.git_url);
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><a href="${file.name}">${file.name.replace(".html", "").replace(/%20/g, " ")}</a></td>
+          <td>${date.toLocaleDateString()}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    fetchRecipes();
+
+    function sortTable(colIndex) {
+      const table = document.getElementById("recipe-table");
+      const rows = Array.from(table.rows).slice(1);
+      const dir = table.getAttribute("data-sort-dir") === "asc" ? "desc" : "asc";
+      table.setAttribute("data-sort-dir", dir);
+
+      rows.sort((a, b) => {
+        const A = a.cells[colIndex].textContent.trim().toLowerCase();
+        const B = b.cells[colIndex].textContent.trim().toLowerCase();
+        return dir === "asc" ? A.localeCompare(B) : B.localeCompare(A);
+      });
+
+      for (let row of rows) {
+        table.tBodies[0].appendChild(row);
+      }
+    }
+  </script>
 </body>
 </html>
