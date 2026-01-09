@@ -55,48 +55,77 @@
   </table>
 
   <script>
-    const username = "ferdmans16";
-    const repo = "Recipes";
+  const username = "ferdmans16";
+  const repo = "Recipes";
 
-    async function fetchRecipes() {
+  async function fetchRecipes() {
+    const tbody = document.getElementById("recipe-list");
+
+    try {
       const res = await fetch(`https://api.github.com/repos/${username}/${repo}/contents/`);
       const files = await res.json();
 
-      const htmlFiles = files.filter(file => file.name.endsWith(".html"));
-      const tbody = document.getElementById("recipe-list");
+      if (!Array.isArray(files)) {
+        throw new Error("GitHub API error or rate limit exceeded");
+      }
+
+      const htmlFiles = files.filter(
+        file => file.name.endsWith(".html") && file.name !== "index.html"
+      );
 
       for (let file of htmlFiles) {
-        const commitRes = await fetch(`https://api.github.com/repos/${username}/${repo}/commits?path=${file.name}&per_page=1`);
-        const commitData = await commitRes.json();
-        const date = new Date(commitData[0]?.commit?.committer?.date || file.git_url);
+        let dateText = "—";
+
+        try {
+          const commitRes = await fetch(
+            `https://api.github.com/repos/${username}/${repo}/commits?path=${file.name}&per_page=1`
+          );
+          const commitData = await commitRes.json();
+          if (Array.isArray(commitData) && commitData.length > 0) {
+            dateText = new Date(
+              commitData[0].commit.committer.date
+            ).toLocaleDateString();
+          }
+        } catch {
+          // ignore date failure
+        }
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td><a href="${file.name}">${file.name.replace(".html", "").replace(/%20/g, " ")}</a></td>
-          <td>${date.toLocaleDateString()}</td>
+          <td><a href="${file.name}">${file.name.replace(".html", "")}</a></td>
+          <td>${dateText}</td>
         `;
         tbody.appendChild(tr);
       }
+    } catch (err) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="2" style="color: red;">
+            Failed to load recipes (GitHub API rate limit). Refresh later.
+          </td>
+        </tr>
+      `;
+      console.error(err);
     }
+  }
 
-    fetchRecipes();
+  fetchRecipes();
 
-    function sortTable(colIndex) {
-      const table = document.getElementById("recipe-table");
-      const rows = Array.from(table.rows).slice(1);
-      const dir = table.getAttribute("data-sort-dir") === "asc" ? "desc" : "asc";
-      table.setAttribute("data-sort-dir", dir);
+  function sortTable(colIndex) {
+    const table = document.getElementById("recipe-table");
+    const rows = Array.from(table.tBodies[0].rows);
+    const dir = table.getAttribute("data-sort-dir") === "asc" ? "desc" : "asc";
+    table.setAttribute("data-sort-dir", dir);
 
-      rows.sort((a, b) => {
-        const A = a.cells[colIndex].textContent.trim().toLowerCase();
-        const B = b.cells[colIndex].textContent.trim().toLowerCase();
-        return dir === "asc" ? A.localeCompare(B) : B.localeCompare(A);
-      });
+    rows.sort((a, b) => {
+      const A = a.cells[colIndex].textContent.toLowerCase();
+      const B = b.cells[colIndex].textContent.toLowerCase();
+      return dir === "asc" ? A.localeCompare(B) : B.localeCompare(A);
+    });
 
-      for (let row of rows) {
-        table.tBodies[0].appendChild(row);
-      }
-    }
-  </script>
+    rows.forEach(row => table.tBodies[0].appendChild(row));
+  }
+</script>
+
 </body>
 </html>
