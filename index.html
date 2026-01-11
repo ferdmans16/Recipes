@@ -55,61 +55,22 @@
   </table>
 
   <script>
-  const username = "ferdmans16";
-  const repo = "Recipes";
+  async function loadRecipes() {
+    const res = await fetch('recipes.json');
+    const recipes = await res.json();
+    const tbody = document.getElementById('recipe-list');
 
-  async function fetchRecipes() {
-    const tbody = document.getElementById("recipe-list");
-
-    try {
-      const res = await fetch(`https://api.github.com/repos/${username}/${repo}/contents/`);
-      const files = await res.json();
-
-      if (!Array.isArray(files)) {
-        throw new Error("GitHub API error or rate limit exceeded");
-      }
-
-      const htmlFiles = files.filter(
-        file => file.name.endsWith(".html") && file.name !== "index.html"
-      );
-
-      for (let file of htmlFiles) {
-        let dateText = "—";
-
-        try {
-          const commitRes = await fetch(
-            `https://api.github.com/repos/${username}/${repo}/commits?path=${file.name}&per_page=1`
-          );
-          const commitData = await commitRes.json();
-          if (Array.isArray(commitData) && commitData.length > 0) {
-            dateText = new Date(
-              commitData[0].commit.committer.date
-            ).toLocaleDateString();
-          }
-        } catch {
-          // ignore date failure
-        }
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td><a href="${file.name}">${file.name.replace(".html", "")}</a></td>
-          <td>${dateText}</td>
-        `;
-        tbody.appendChild(tr);
-      }
-    } catch (err) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="2" style="color: red;">
-            Failed to load recipes (GitHub API rate limit). Refresh later.
-          </td>
-        </tr>
+    recipes.forEach(recipe => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><a href="${recipe.filename}">${recipe.title}</a></td>
+        <td>${recipe.last_modified}</td>
       `;
-      console.error(err);
-    }
+      tbody.appendChild(tr);
+    });
   }
 
-  fetchRecipes();
+  loadRecipes();
 
   function sortTable(colIndex) {
     const table = document.getElementById("recipe-table");
@@ -125,7 +86,7 @@
 
     rows.forEach(row => table.tBodies[0].appendChild(row));
   }
-</script>
+  </script>
 
 </body>
 </html>
